@@ -1,7 +1,6 @@
 
 from rest_framework import serializers
 from .models import *
-from django.forms import ModelForm, Textarea
 
 class UtilisateurSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -20,27 +19,18 @@ class UtilisateurSerializer(serializers.HyperlinkedModelSerializer):
 class TicketSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Ticket  
-        widgets = {
-            'description': Textarea(attrs={'cols': 80, 'rows': 20}),
-        }
         fields = [
             'id',
             'url',
             'description',
             'probleme',
             'date_creation',
-            'date_echeance',
-            'urgence',
             'etat',
-            'priorite',
             'source',
-            'impact',
             'service',
             'client',
             'technicien',
             'admin',
-            'deleted',
-            'admin_deleted',
             'uploadFile',    
             'uploadImage'
         ]
@@ -106,6 +96,7 @@ class ProblemeSerializer(serializers.HyperlinkedModelSerializer):
             'url',
             'nom',
             'description',
+            'priorite',
             'activate',
             'uploadFile',
             'uploadImage'

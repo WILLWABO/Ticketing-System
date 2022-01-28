@@ -25,6 +25,8 @@ urlpatterns = [
     path('admin-stats/', views.get_admin_stats),
     path('new-problems/', views.get_new_problems),
     path('update-problem/', views.update_problem),
+    path('running_tickets/', views.get_running_tickets),
+    path('attente_tickets/', views.get_attente_tickets),
 
     path('all-user-tickets/<str:id>/', views.get_user_tickets),
     path('waiting-user-tickets/<str:id>/', views.get_user_waiting_tickets),
@@ -32,6 +34,8 @@ urlpatterns = [
     path('relanced-user-tickets/<str:id>/', views.get_user_relance_tickets),
     path('user-stats/<str:id>/', views.get_user_stats),
     path('relancer-tickets/<str:id>/', views.relance_a_ticket),
+    path('user_running_tickets/<str:id>/', views.get_user_running_tickets),
+    path('user_attente_tickets/<str:id>/', views.get_user_attente_tickets),
 
     path('all-technician-tickets/<str:id>/', views.get_technician_tickets),
     path('waiting-technician-tickets/<str:id>/',
@@ -44,6 +48,10 @@ urlpatterns = [
     path('finalize-tickets/<str:id>/', views.finalize_ticket),
     path('check-password/<str:id>/', views.check_new_technician),
     path('update-password/', views.update_password),
+    path('technician_attente_tickets/', views.get_technician_attente_tickets),
+    path('technician_running_tickets/', views.get_technician_running_tickets),
+    path('tech_mise_en_attente_ticket/', views.tech_mise_en_attente_ticket),
+    path('tech_put_running_ticket/', views.tech_put_running_ticket),
 
 
 

@@ -154,25 +154,25 @@ def ticket_sub_getter(tickets: Ticket, request):
             ticket["technicien"] = tech.nom + " " + tech.prenom
 
         # get priority of ticket
-        # problem = ticket["probleme"]
+        problem = ticket["probleme"]
 
-        # if problem is None:
-        #     ticket["priorite"] = "Inconnu"
-        # else:
-        #     id = problem[problem.find('probleme')+8:]
-        #     id = id.replace('/', '')
+        if problem is None:
+            ticket["priorite"] = "Inconnu"
+        else:
+            id = problem[problem.find('probleme')+8:]
+            id = id.replace('/', '')
 
-        #     switcher = {
-        #         -1: 'Inconnu',
-        #         0: 'Normal',
-        #         1: 'Urgent',
-        #         2: 'Critique'
-        #     }
+            switcher = {
+                -1: 'Normal',
+                0: 'Inconnu',
+                1: 'Urgent',
+                2: 'Critique'
+            }
 
-        #     problem = Probleme.objects.get(id=id)
-        #     ticket["priorite"] = switcher.get(problem.priorite, "Inconnu")
+            problem = Probleme.objects.get(id=id)
+            ticket["priorite"] = switcher.get(problem.priorite, "Inconnu")
 
-        # ticket.pop('probleme')
+        ticket.pop('probleme')
 
         # arrange date format
         dates = ticket["date_creation"]
@@ -180,14 +180,9 @@ def ticket_sub_getter(tickets: Ticket, request):
         dates = dates.replace('T', ' à ')
         ticket["date_creation"] = dates
 
-        dates = ticket["date_echeance"]
-        dates = dates[: 19]
-        dates = dates.replace('T', ' à ')
-        ticket["date_echeance"] = dates
-
     result = {
         "success": True,
-        "message": "Opération éffectuée avec succès",
+        "message": "Opération effectuée avec succès",
         "data": serializer_ticket
     }
 
@@ -275,7 +270,7 @@ def get_waiting_tickets(request):
         This view permits to get all waiting tickets (tickets that have been allocated to a technician)
     """
 
-    tickets = Ticket.objects.filter(deleted=False, etat="En cours de traitement").exclude(
+    tickets = Ticket.objects.filter(deleted=False, etat="Attribué").exclude(
         technicien=None).order_by('-date_creation')
     return ticket_getter(tickets=tickets, request=request)
 
@@ -287,6 +282,27 @@ def get_finished_tickets(request):
     """
 
     tickets = Ticket.objects.filter(deleted=False, etat="Résolu").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+@api_view(['GET'])
+def get_running_tickets(request):
+    """
+        This view permits to get all the running tickets
+    """
+
+    tickets = Ticket.objects.filter(deleted=False, etat="En cours de traitement").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+
+@api_view(['GET'])
+def get_attente_tickets(request):
+    """
+        This view permits to get all the tickets which are waiting for owners responses in order to be resolved
+    """
+
+    tickets = Ticket.objects.filter(deleted=False, etat="En attente").exclude(
         technicien=None).order_by('-date_creation')
     return ticket_getter(tickets=tickets, request=request)
 
@@ -362,7 +378,7 @@ def ticket_to_technician(request):
 
         ticket.technicien = technicien
         ticket.admin = admin
-        ticket.etat = "En cours de traitement"
+        ticket.etat = "Attribué"
         ticket.save()
 
         serializer = TicketSerializer(ticket, context={'request': request})
@@ -377,8 +393,17 @@ def get_admin_stats(request):
         This view is used to get admin stats on different tickets
     """
     result = {}
+
     num_wait_tik = len(Ticket.objects.filter(deleted=False, etat="En cours de traitement").exclude(
         technicien=None))
+
+    num_attr_tik = len(Ticket.objects.filter(deleted=False, etat="Attribué").exclude(
+        technicien=None))
+    num_att_tik = len(Ticket.objects.filter(deleted=False, etat="En attente").exclude(
+        technicien=None))
+    num_fin_tik  = len(Ticket.objects.filter(deleted=False, etat="Résolu").exclude(
+        technicien=None))
+
 
     num_new_tik = len(Ticket.objects.filter(
         technicien=None, deleted=False))
@@ -391,6 +416,9 @@ def get_admin_stats(request):
     result["num_new_tik"] = num_new_tik
     result["num_rel_tik"] = num_rel_tik
     result["num_tech_tik"] = num_tech_tik
+    result["num_att_tik"] = num_att_tik
+    result["num_attr_tik "] = num_attr_tik 
+    result["num_fin_tik "] = num_fin_tik 
 
     return Response(result, status=status.HTTP_200_OK)
 
@@ -406,7 +434,7 @@ def get_new_problems(request):
 
     result = {
         "status": True,
-        "message": "Les aux problèmes ont été récupéré",
+        "message": "Les nouveaux problèmes ont été récupérés",
         "data": serializer.data
     }
     return Response(result, status=status.HTTP_200_OK)
@@ -429,14 +457,14 @@ def update_problem(request):
         serializer = ProblemeSerializer(problem, context={'request': request})
         result = {
             "success": True,
-            "message": "Le problème a été mis à jour sans problème",
+            "message": "Le problème a été mis à jour",
             "data": serializer.data
         }
         return Response(result, status=status.HTTP_200_OK)
     except:
         result = {
             "success": True,
-            "message": "Une érreur est survenu",
+            "message": "Une erreur est survenue",
             "data": {}
         }
         return Response(result, status=status.HTTP_200_OK)
@@ -464,7 +492,7 @@ def get_user_waiting_tickets(request, id):
     """
 
     client = Client.objects.get(id=id)
-    tickets = Ticket.objects.filter(deleted=False, client=client, etat="En cours de traitement").exclude(
+    tickets = Ticket.objects.filter(deleted=False, client=client, etat="Attribué").exclude(
         technicien=None).order_by('-date_creation')
     return ticket_getter(tickets=tickets, request=request)
 
@@ -477,6 +505,28 @@ def get_user_finished_tickets(request, id):
 
     client = Client.objects.get(id=id)
     tickets = Ticket.objects.filter(deleted=False, client=client, etat="Résolu").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+@api_view(['GET'])
+def get_user_running_tickets(request, id):
+    """
+        This view permits to get all the running tickets of a user (tickets that have been allocated to a technician)
+    """
+
+    client = Client.objects.get(id=id)
+    tickets = Ticket.objects.filter(deleted=False, client=client, etat="En cours de traitement").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+@api_view(['GET'])
+def get_user_attente_tickets(request, id):
+    """
+        This view permits to get all the tickets which need some responses from owner of a user (tickets that have been allocated to a technician)
+    """
+
+    client = Client.objects.get(id=id)
+    tickets = Ticket.objects.filter(deleted=False, client=client, etat="En attente").exclude(
         technicien=None).order_by('-date_creation')
     return ticket_getter(tickets=tickets, request=request)
 
@@ -527,7 +577,7 @@ def relance_a_ticket(request, id):
     if ticket.etat == "Résolu":
         result = {
             "success": True,
-            "message": "Le ticket est déjà résolu. Impossible de le relancer.",
+            "message": "Le ticket a déjà été résolu. Impossible de le relancer.",
             "data": {}
         }
         return Response(result, status=status.HTTP_200_OK)
@@ -542,10 +592,10 @@ def relance_a_ticket(request, id):
 
         result = {
             "success": True,
-            "message": "Le nombre de relance de ce ticket a été mis à jour",
+            "message": "Le nombre de relances de ce ticket a été mis à jour",
             "data": serializer.data
         }
-        if ticket.etat == "Nouveau":
+        if (ticket.etat == "Nouveau" or ticket.etat == "Attribué" or ticket.etat == "En cours de traitement" or ticket.etat == "En attente"):
             admin = Administrateur.objects.all()[0]
             print(send_email_admin(admin.email))
         else:
@@ -584,10 +634,16 @@ def get_user_stats(request, id):
 
     num_new_tik = len(tickets.filter(etat="Nouveau"))
 
+    num_attr_tik = len(tickets.filter(etat="Attribué"))
+
+    num_att_tik = len(tickets.filter(etat="En attente"))
+
     result["num_wait_tik"] = num_wait_tik
     result["num_new_tik"] = num_new_tik
     result["num_rel_tik"] = num_rel_tik
     result["num_fin_tik"] = num_fin_tik
+    result["num_attr_tik"] = num_attr_tik
+    result["num_att_tik"] = num_att_tik
 
     return Response(result, status=status.HTTP_200_OK)
 
@@ -611,6 +667,28 @@ def get_technician_tickets(request, id):
 def get_technician_waiting_tickets(request, id):
     """
         This view permits to get all waiting tickets of a technician (tickets that have been allocated to a technician)
+    """
+
+    technicien = Technicien.objects.get(id=id)
+    tickets = Ticket.objects.filter(deleted=False, technicien=technicien, etat="Attribué").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+@api_view(['GET'])
+def get_technician_attente_tickets(request, id):
+    """
+        This view permits to get all waiting tickets of a technician (tickets that have been allocated to a technician)
+    """
+
+    technicien = Technicien.objects.get(id=id)
+    tickets = Ticket.objects.filter(deleted=False, technicien=technicien, etat="En attente").exclude(
+        technicien=None).order_by('-date_creation')
+    return ticket_getter(tickets=tickets, request=request)
+
+@api_view(['GET'])
+def get_technician_running_tickets(request, id):
+    """
+        This view permits to get all running tickets of a technician (tickets that have been allocated to a technician)
     """
 
     technicien = Technicien.objects.get(id=id)
@@ -693,11 +771,63 @@ def finalize_ticket(request, id):
 
     return Response(result, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+def tech_mise_en_attente_ticket(request, id):
+    """
+        This view is use to finalize a ticket
+    """
+    ticket = Ticket.objects.get(id=id)
+    if ticket.etat == 'En attente':
+        result = {
+            "success": True,
+            "message": "Le ticket avait déjà été mis en attente",
+            "data": {}
+        }
+        return Response(result, status=status.HTTP_200_OK)
+
+    ticket.etat = 'En attente'
+    ticket.save()
+
+    result = {
+        "success": True,
+        "message": "La mise en attente du ticket a été éffectuée",
+        "data": {}
+    }
+    print(send_email_user(ticket.client.email))
+
+    return Response(result, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+def tech_put_running_ticket(request, id):
+    """
+        This view is use to finalize a ticket
+    """
+    ticket = Ticket.objects.get(id=id)
+    if ticket.etat == 'En cours de traitement':
+        result = {
+            "success": True,
+            "message": "Le ticket est déjà en cours de traitement",
+            "data": {}
+        }
+        return Response(result, status=status.HTTP_200_OK)
+
+    ticket.etat = 'En cours de traitement'
+    ticket.save()
+
+    result = {
+        "success": True,
+        "message": "Le ticket est en cours de traitement",
+        "data": {}
+    }
+    print(send_email_user(ticket.client.email))
+
+    return Response(result, status=status.HTTP_200_OK)
+
 
 @api_view(['GET'])
 def get_technician_stats(request, id):
     """
-        This view is used to get admin stats on different tickets
+        This view is used to get technicien stats on different tickets
     """
     result = {}
 
@@ -707,6 +837,10 @@ def get_technician_stats(request, id):
 
     num_wait_tik = len(tickets.filter(etat="En cours de traitement"))
 
+    num_attr_tik = len(tickets.filter(etat="Attribué"))
+
+    num_att_tik = len(tickets.filter(etat="En attente"))
+
     num_fin_tik = len(tickets.filter(etat="Résolu"))
 
     num_rel_tik = len(Relancer.objects.all().exclude(
@@ -715,6 +849,8 @@ def get_technician_stats(request, id):
     result["num_wait_tik"] = num_wait_tik
     result["num_fin_tik"] = num_fin_tik
     result["num_rel_tik"] = num_rel_tik
+    result["num_attr_tik"] = num_attr_tik
+    result["num_att_tik"] = num_att_tik
 
     return Response(result, status=status.HTTP_200_OK)
 
